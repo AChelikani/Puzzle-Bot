@@ -6,13 +6,22 @@ import puzzles
 import random
 import config
 
+# TODO: Make hints post to another channel of just admin, where admin can then respond to hints and bot auto DMs back the requester of the hint
+# TODO: Show scoreboard that updates every so often in another channel maybe
+# TODO: Show analytics on how many teams have solved each puzzle that updates every so often in another channel maybe?
+# TODO: Verify that team creation/team joining works well
+# TODO: Store and use timestamp of last solve to break ties
+# TODO: Order scoreboard by decreasing score
+# TODO: Make scoreboard output look pretty
+# TODO: Make puzzled solved status output look pretty
+
 BOT_ACCESS_TOKEN = config.BOT_ACCESS_TOKEN
 
 slack_token = BOT_ACCESS_TOKEN
 sc = SlackClient(slack_token)
 team_code_to_team = {}
 user_to_team_code = {}
-team_code_to_score = {} # TODO: Store timestamp of last solve
+team_code_to_score = {}
 team_code_to_puzzles_solved = {}
 
 def generate_team_code():
@@ -32,8 +41,6 @@ def clean_guess(guess):
     return guess
 
 def scoreboard(user):
-    # TODO: Use timestamp of last solve to break ties
-    # TODO: Order scoreboard by decreasing score
     resp = ""
     for team_code in team_code_to_score:
         team_name = team_code_to_team[team_code]
@@ -41,7 +48,6 @@ def scoreboard(user):
         resp +=  "`" + team_name + " "*(30 - len(team_name)) + str(team_score) + '
 
 def puzzle_statuses(user):
-    # TODO: Make this look better when displaying to user (probably using attachments)
     if user not in user_to_team_code:
         return messages.INVALID_USER
     team_code = user_to_team_code[user]
