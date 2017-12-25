@@ -15,3 +15,4 @@ HINT_REQUESTED = "Your hint was requested. You should hear back within a few min
 INVALID_HINT_CODE = "You provided an invalid hint code for the hint you are responding to."
 INVALID_HINT_RESPONSE = "Unable to parse hint response. Type `[hint code] [your response]` under the thread for the hint request you are responding to."
 HINT_SENT = "Hint was sent!"
+TEAM_NAME_TOO_LONG = "Your team name is too long. Please choose a team name shorter than 30 characters."
