@@ -8,13 +8,12 @@ import config
 
 # TODO: Make it so hint_code is not required when responding to hint
 # TODO: Add rate limits to teams asking for hints maybe?
+# TODO: Add rate limits to teams guessing many times?
 # TODO: Show scoreboard that updates every so often in another channel maybe
 # TODO: Show analytics on how many teams have solved each puzzle that updates every so often in another channel maybe?
 # TODO: Verify that team creation/team joining works well
-# TODO: Make puzzled solved status output look pretty
 # TODO: Make the message strings templates, so that we can insert variable values into them to make more meaningful messages
-# TODO: Maybe add functionality for people to see who is on their team
-# TODO: Similar to above, maybe add functionality for anyone on team to see their team "info" ie. solved puzzles, score, other team members
+
 
 BOT_ACCESS_TOKEN = config.BOT_ACCESS_TOKEN
 BOT_USERNAME = "Puzzle Bot"
@@ -33,10 +32,26 @@ for group in groups["groups"]:
     if group["name"] == "hints":
         hint_channel_id = group["id"]
 
+def team_info(user):
+    if user not in user_to_team_code:
+        return messages.INVALID_USER
+    resp = ""
+    team_code = user_to_team_code[user]
+    team_members = [member for member in user_to_team_code if user_to_team_code[member] == team_code]
+    for x in range(len(team_members)):
+        team_members[x] = get_user_name(team_members[x])
+    print team_members
+    team_name = team_code_to_team_name[team_code]
+    resp += "Team Name: `" + team_name + "`\n"
+    resp += "Team Members: "
+    for member in team_members:
+        resp += "`" + member + "` "
+    return resp
+
 def get_user_name(user):
     try:
         res = sc.api_call('users.info', user=user)
-        return res["user"]["name"]
+        return res["user"]["real_name"]
     except:
         return "Name not found!"
 
@@ -67,11 +82,13 @@ def scoreboard():
     resp = "Scoreboard\n"
     scores = zip(team_code_to_score.keys(), team_code_to_score.values())
     scores = sorted(scores, key=lambda x: (-x[1][0], x[1][1]))
+    rank = 1
     for team in scores:
         team_code, team_score_and_timestamp = team
         team_score = team_score_and_timestamp[0]
         team_name = team_code_to_team_name[team_code]
-        resp +=  "`" + team_name + " "*(30 - len(team_name)) + str(team_score) + "`"
+        resp +=  "`" + str(rank) + "`. `" + team_name + " "*(30 - len(team_name)) + str(team_score) + "`"
+        rank += 1
     return resp
 
 def puzzle_statuses(user):
@@ -156,6 +173,8 @@ def process_message(message, user, channel):
         return scoreboard()
     elif message == "solved":
         return puzzle_statuses(user)
+    elif message == "team info":
+        return team_info(user)
     elif "hint" in message:
         try:
             _1, puzzle_code, hint_prompt = message.split(" ", 2)
