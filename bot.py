@@ -43,7 +43,6 @@ def team_info(user):
     team_members = [member for member in user_to_team_code if user_to_team_code[member] == team_code]
     for x in range(len(team_members)):
         team_members[x] = get_user_name(team_members[x])
-    print team_members
     team_name = team_code_to_team_name[team_code]
     resp += "Team Name: `" + team_name + "`\n"
     resp += "Team Members: "
@@ -139,8 +138,7 @@ def create_team(team_name, user):
     team_code_to_score[team_code] = (0, time.time())
     team_code_to_puzzles_solved[team_code] = {}
     for puzzle in puzzles.PUZZLES:
-        team_code_to_puzzles_solved[team_code][puzzle] = ("Not solved", time.time(), time.time()))
-    print messages.TEAM_CREATED + team_code + "`"
+        team_code_to_puzzles_solved[team_code][puzzle] = ("Not solved", time.time(), time.time())
     return messages.TEAM_CREATED + team_code + "`"
 
 def join_team(team_code, user):
