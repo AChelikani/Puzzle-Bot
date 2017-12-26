@@ -7,8 +7,6 @@ import random
 import config
 
 # TODO: Make it so hint_code is not required when responding to hint
-# TODO: Add rate limits to teams asking for hints maybe?
-# TODO: Add rate limits to teams guessing many times?
 # TODO: Show scoreboard that updates every so often in another channel maybe
 # TODO: Show analytics on how many teams have solved each puzzle that updates every so often in another channel maybe?
 # TODO: Verify that team creation/team joining works well
@@ -17,20 +15,25 @@ import config
 
 BOT_ACCESS_TOKEN = config.BOT_ACCESS_TOKEN
 BOT_USERNAME = "Puzzle Bot"
+GUESS_DELAY = 5 # seconds per puzzle
+HINT_DElAY = 300 # seconds per puzzle
 
 slack_token = BOT_ACCESS_TOKEN
 sc = SlackClient(slack_token)
 team_code_to_team_name = {}
 user_to_team_code = {}
 team_code_to_score = {} # code -> (score, timestamp of latest solve)
-team_code_to_puzzles_solved = {}
+team_code_to_puzzles_solved = {} # code -> puzzle_dict -> (puzzle_code -> (solve_status, timestamp of last guess, timestamp of last hint ask))
 hint_code_to_hint = {} # code -> (puzzle_code, description, user, channel_id)
+
 
 hint_channel_id = ""
 groups = sc.api_call("groups.list")
 for group in groups["groups"]:
     if group["name"] == "hints":
         hint_channel_id = group["id"]
+
+assert(hint_channel_id != "")
 
 def team_info(user):
     if user not in user_to_team_code:
@@ -70,8 +73,10 @@ def generate_hint_code():
 def update_score(user, puzzle_code):
     team_code = user_to_team_code[user]
     score, _1 = team_code_to_score[team_code]
-    team_code_to_score[team_code] = (score + puzzles.POINTS[puzzle_code], time.time())
-    team_code_to_puzzles_solved[team_code][puzzle_code] = "Solved!"
+    solve_time = time.time()
+    team_code_to_score[team_code] = (score + puzzles.POINTS[puzzle_code], solve_time)
+    _1, _2, last_hint_time = team_code_to_puzzles_solved[team_code][puzzle_code]
+    team_code_to_puzzles_solved[team_code][puzzle_code] = ("Solved!", solve_time, last_hint_time)
 
 def clean_guess(guess):
     guess = guess.replace(" ", "")
@@ -100,7 +105,7 @@ def puzzle_statuses(user):
     puzzle_states = team_code_to_puzzles_solved[team_code]
     for puzzle_code in puzzle_states:
         puzzle_name = puzzles.PUZZLES[puzzle_code]
-        resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code] + "`\n"
+        resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
     return resp
 
 def check_solution(puzzle_code, guess, user):
@@ -110,7 +115,15 @@ def check_solution(puzzle_code, guess, user):
         return messages.INVALID_USER
     else:
         answer = puzzles.ANSWERS[puzzle_code]
-        if (clean_guess(guess) != answer):
+        team_code = user_to_team_code[user]
+        puzzle_status, last_guess_time, last_hint_time = team_code_to_puzzles_solved[team_code][puzzle_code]
+        guess_time = time.time()
+        if (puzzle_status == "Solved!"):
+            return messages.PUZZLE_ALREADY_SOLVED
+        elif (guess_time - last_guess_time < GUESS_DELAY):
+            return messages.WAIT_TO_GUESS
+        elif (clean_guess(guess) != answer):
+            team_code_to_puzzles_solved[team_code][puzzle_code] = ("Not solved", guess_time, last_hint_time)
             return messages.WRONG_ANSWER
         else:
             update_score(user, puzzle_code)
@@ -126,7 +139,7 @@ def create_team(team_name, user):
     team_code_to_score[team_code] = (0, time.time())
     team_code_to_puzzles_solved[team_code] = {}
     for puzzle in puzzles.PUZZLES:
-        team_code_to_puzzles_solved[team_code][puzzle] = "Not solved"
+        team_code_to_puzzles_solved[team_code][puzzle] = ("Not solved", time.time(), time.time()))
     print messages.TEAM_CREATED + team_code + "`"
     return messages.TEAM_CREATED + team_code + "`"
 
@@ -138,15 +151,23 @@ def join_team(team_code, user):
     elif user_to_team_code.values().count(team_code) == 4:
         return messages.TEAM_FULL
     user_to_team_code[user] = team_code
+    return messages.JOINED_TEAM
 
 def submit_hint(puzzle_code, hint_request, user, response_channel):
     if user not in user_to_team_code:
         return messages.INVALID_USER
     elif puzzle_code not in puzzles.PUZZLES:
         return messages.INVALID_CODE
-    hint_code = generate_team_code()
+    team_code = user_to_team_code[user]
+    puzzle_status, last_guess, last_hint_time = team_code_to_puzzles_solved[team_code][puzzle_code]
+    if (puzzle_status == "Solved!"):
+        return messages.PUZZLE_ALREADY_SOLVED
+    hint_code = generate_hint_code()
     hint_code_to_hint[hint_code] = (puzzle_code, hint_request, user, response_channel)
     puzzle_name = puzzles.PUZZLES[puzzle_code]
+    if (time.time() - last_hint_time < HINT_DElAY):
+        return messages.WAIT_TO_HINT
+    team_code_to_puzzles_solved[team_code][puzzle_code] = (puzzle_status, last_guess, time.time())
     send_message("`" + hint_code + "`\n For puzzle: `" + puzzle_name + "`.\n *Hint request was:* " + hint_request, hint_channel_id)
     return messages.HINT_REQUESTED
 
@@ -164,7 +185,7 @@ def process_message(message, user, channel):
             return messages.TEAM_PARSING_ERROR
     elif "join team" in message:
         try:
-            _1, _2, team_code = messagesplit(" ", 2)
+            _1, _2, team_code = message.split(" ", 2)
             resp = join_team(team_code, user)
             return resp
         except:
@@ -242,6 +263,6 @@ if __name__ == "__main__":
                 process_event(sc.rtm_read())
             except:
                 continue
-            time.sleep(READ_WEBSOCKET_DELAY)
+            #time.sleep(READ_WEBSOCKET_DELAY)
     else:
         print("Connection failed. Invalid Slack token or bot ID?")
