@@ -6,12 +6,7 @@ import puzzles
 import random
 import config
 
-# TODO: Make it so hint_code is not required when responding to hint
-# TODO: Show scoreboard that updates every so often in another channel maybe
-# TODO: Show analytics on how many teams have solved each puzzle that updates every so often in another channel maybe?
-# TODO: Verify that team creation/team joining works well
-# TODO: Make the message strings templates, so that we can insert variable values into them to make more meaningful messages
-
+# TODO: Show puzzle codes along with puzzle names
 
 BOT_ACCESS_TOKEN = config.BOT_ACCESS_TOKEN
 BOT_USERNAME = "Puzzle Bot"
@@ -25,7 +20,10 @@ user_to_team_code = {}
 team_code_to_score = {} # code -> (score, timestamp of latest solve)
 team_code_to_puzzles_solved = {} # code -> puzzle_dict -> (puzzle_code -> (solve_status, timestamp of last guess, timestamp of last hint ask))
 hint_code_to_hint = {} # code -> (puzzle_code, description, user, channel_id)
+puzzle_code_to_solves = {}
 
+for puzzle_code in puzzles.PUZZLES:
+    puzzle_code_to_solves[puzzle_code] = 0
 
 hint_channel_id = ""
 groups = sc.api_call("groups.list")
@@ -33,7 +31,13 @@ for group in groups["groups"]:
     if group["name"] == "hints":
         hint_channel_id = group["id"]
 
+stats_channel_id = ""
+for group in groups["groups"]:
+    if group["name"] == "stats":
+        stats_channel_id = group["id"]
+
 assert(hint_channel_id != "")
+assert(stats_channel_id != "")
 
 def team_info(user):
     if user not in user_to_team_code:
@@ -69,6 +73,12 @@ def generate_hint_code():
         hint_code = str(random.randint(10000, 99999))
     return hint_code
 
+def puzzle_stats():
+    stats_message = "Puzzle Stats\n"
+    for puzzle_code in puzzles.PUZZLES:
+        stats_message += "`" + puzzles.PUZZLES[puzzle_code] + "` has been solved by `" + str(puzzle_code_to_solves[puzzle_code]) + "` teams\n"
+    return stats_message
+
 def update_score(user, puzzle_code):
     team_code = user_to_team_code[user]
     score, _1 = team_code_to_score[team_code]
@@ -76,6 +86,10 @@ def update_score(user, puzzle_code):
     team_code_to_score[team_code] = (score + puzzles.POINTS[puzzle_code], solve_time)
     _1, _2, last_hint_time = team_code_to_puzzles_solved[team_code][puzzle_code]
     team_code_to_puzzles_solved[team_code][puzzle_code] = ("Solved!", solve_time, last_hint_time)
+    puzzle_code_to_solves[puzzle_code] += 1
+    stats_message = "Team `" + team_code_to_team_name[team_code] + "` just solved puzzle `" + puzzles.PUZZLES[puzzle_code] + "`\n"
+    stats_message += puzzle_stats()
+    send_message(stats_message, stats_channel_id)
 
 def clean_guess(guess):
     guess = guess.replace(" ", "")
@@ -91,7 +105,7 @@ def scoreboard():
         team_code, team_score_and_timestamp = team
         team_score = team_score_and_timestamp[0]
         team_name = team_code_to_team_name[team_code]
-        resp +=  "`" + str(rank) + "`. `" + team_name + " "*(30 - len(team_name)) + str(team_score) + "`"
+        resp +=  "`" + str(rank) + "`. `" + team_name + " "*(30 - len(team_name)) + str(team_score) + "`\n"
         rank += 1
     return resp
 
@@ -103,7 +117,7 @@ def puzzle_statuses(user):
     resp = "Your Puzzles\n"
     puzzle_states = team_code_to_puzzles_solved[team_code]
     for puzzle_code in puzzle_states:
-        puzzle_name = puzzles.PUZZLES[puzzle_code]
+        puzzle_name = puzzles.PUZZLES[puzzle_code] + " (" + str(puzzle_code) + ")"
         resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
     return resp
 
@@ -151,6 +165,13 @@ def join_team(team_code, user):
     user_to_team_code[user] = team_code
     return messages.JOINED_TEAM
 
+def leave_team(user):
+    if user not in user_to_team_code:
+        return messages.INVALID_USER
+    team_code = user_to_team_code[user]
+    del user_to_team_code[user]
+    return messages.LEFT_TEAM
+
 def submit_hint(puzzle_code, hint_request, user, response_channel):
     if user not in user_to_team_code:
         return messages.INVALID_USER
@@ -188,8 +209,16 @@ def process_message(message, user, channel):
             return resp
         except:
             return messages.TEAM_CODE_PARSING_ERROR
+    elif message == "leave team":
+        try:
+            resp = leave_team(user)
+            return resp
+        except:
+            return messages.TEAM_LEAVE_ERROR
     elif message == "scoreboard":
         return scoreboard()
+    elif message == "stats":
+        return puzzle_stats()
     elif message == "solved":
         return puzzle_statuses(user)
     elif message == "team info":
@@ -232,7 +261,7 @@ def process_event(rtm_event):
             return
         DM_channel = event["channel"]
         DM_user = event["user"]
-        DM_message = event["text"]
+        DM_message = event["text"].lower()
         if (DM_channel == hint_channel_id):
             if "thread_ts" not in event:
                 return
