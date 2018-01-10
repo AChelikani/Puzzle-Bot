@@ -1,12 +1,9 @@
 from slackclient import SlackClient
-import requests
 import time
 import messages
 import puzzles
 import random
 import config
-
-# TODO: Show puzzle codes along with puzzle names
 
 BOT_ACCESS_TOKEN = config.BOT_ACCESS_TOKEN
 BOT_USERNAME = "Puzzle Bot"
@@ -140,7 +137,8 @@ def check_solution(puzzle_code, guess, user):
             return messages.WRONG_ANSWER
         else:
             update_score(user, puzzle_code)
-            return messages.CORRECT_ANSWER
+            nutrition_facts_url = puzzles.NUTRITION_FACTS[puzzle_code]
+            return messages.CORRECT_ANSWER + nutrition_facts_url
 
 def create_team(team_name, user):
     # Verify this user is not already on a team

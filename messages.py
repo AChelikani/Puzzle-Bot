@@ -1,7 +1,7 @@
 HELP = "Type `create team [team name]` to create a team. You will then be given a code to share with others (up to 3) to join your team.\n Type `join team [team_code]` to join a team.\n Type `leave team` to leave a team if you have accidently joined the wrong team. \n Type `team info` to get information about your team.\n Type `[puzzle code] [your answer]` to submit an answer for a puzzle. The puzzle code is found at top of each puzzle.\n Type `solved` to see the statuses of puzzles for your team.\n Type `scoreboard` to see the current scoreboard.\n Type `stats` to see how many teams have solved each puzzle.\n Type `hint [puzzle code] [your message]` to ask for a hint on a puzzle. Be patient, we should get back to you within 5 minutes.\n Please don't spam the bot or try to find holes in the bot, we set it up very minimally. Give the bot a couple seconds to respond to each of your requests. If you are having any issues with it, just come talk to us."
 INVALID_CODE = "You provided an invalid puzzle code. The puzzle code is found at the top of each puzzle."
 WRONG_ANSWER = "Incorrect!"
-CORRECT_ANSWER = "Correct!"
+CORRECT_ANSWER = "Correct! Please keep this for your reference, you may find it useful later: "
 GUESS_PARSING_ERROR = "Unable to parse your submission. Type `[puzzle code] [your answer]` to submit an answer for a puzzle."
 TEAM_PARSING_ERROR = "Unable to parse team name. Type `create team [team name]` to create a team."
 TEAM_CODE_PARSING_ERROR = "Unable to parse team code. Type `join team [team code]` to join a team."
