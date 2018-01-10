@@ -23,7 +23,7 @@ POINTS = {
 }
 
 NUTRITION_FACTS = {
-    "759" : "`SUPER`"
+    "759" : "`SUPER`",
     "358" : "`DINER`",
     "206" : "`CARTON`",
     "202" : "`FED`",
