@@ -282,7 +282,7 @@ def send_message_in_thread(message, channel, thread_ts):
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = 1
     if sc.rtm_connect():
-        print "Puzzle Bot connected and running!"
+        #print "Puzzle Bot connected and running!"
         while True:
             try:
                 process_event(sc.rtm_read())
@@ -290,4 +290,4 @@ if __name__ == "__main__":
                 continue
             #time.sleep(READ_WEBSOCKET_DELAY)
     else:
-        print("Connection failed. Invalid Slack token or bot ID?")
+        #print("Connection failed. Invalid Slack token or bot ID?")
