@@ -129,10 +129,10 @@ def check_solution2(puzzle_code, guess, user):
     else:
         answer = puzzles.ANSWERS[puzzle_code]
         if (clean_guess(guess) != answer):
-            send_message("Wrong answer attempt from: `" + get_user_name(user) + "` for puzzle: `" + puzzles.PUZZLES[puzzle_code] + "` with guess: `" + guess + "`", preevent_channel_id)
+            #send_message("Wrong answer attempt from: `" + get_user_name(user) + "` for puzzle: `" + puzzles.PUZZLES[puzzle_code] + "` with guess: `" + guess + "`", preevent_channel_id)
             return messages.WRONG_ANSWER
         else:
-            send_message("Correct answer attempt from: `" + get_user_name(user) + "` for puzzle: `" + puzzles.PUZZLES[puzzle_code], + "`" preevent_channel_id)
+            #send_message("Correct answer attempt from: `" + get_user_name(user) + "` for puzzle: `" + puzzles.PUZZLES[puzzle_code], + "`" preevent_channel_id)
             return messages.CORRECT_ANSWER + puzzles.NUTRITION_FACTS[puzzle_code]
 
 def check_solution(puzzle_code, guess, user):
