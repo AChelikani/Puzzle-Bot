@@ -33,6 +33,11 @@ for group in groups["groups"]:
     if group["name"] == "stats":
         stats_channel_id = group["id"]
 
+preevent_channel_id = ""
+for group in groups["groups"]:
+    if group["name"] == "preevent":
+        preevent_channel_id = group["id"]
+
 assert(hint_channel_id != "")
 assert(stats_channel_id != "")
 
@@ -118,14 +123,16 @@ def puzzle_statuses(user):
         resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
     return resp
 
-def check_solution2(puzzle_code, guess):
+def check_solution2(puzzle_code, guess, user):
     if puzzle_code not in puzzles.ANSWERS:
         return messages.INVALID_CODE
     else:
         answer = puzzles.ANSWERS[puzzle_code]
         if (clean_guess(guess) != answer):
             return messages.WRONG_ANSWER
+            send_message("Wrong answer attempt from: " + get_user_name(user) + " for puzzle: " + puzzles.PUZZLES[puzzle_code] + " with guess: " + guess, preevent_channel_id)
         else:
+            send_message("Correct answer attempt from: " + get_user_name(user) + " for puzzle: " + puzzles.PUZZLES[puzzle_code], preevent_channel_id)
             return messages.CORRECT_ANSWER + puzzles.NUTRITION_FACTS[puzzle_code]
 
 def check_solution(puzzle_code, guess, user):
@@ -204,7 +211,7 @@ def process_message2(message, user, channel):
     else:
         try:
             puzzle_code, guess = message.split(" ", 1)
-            res = check_solution2(puzzle_code, guess)
+            res = check_solution2(puzzle_code, guess, user)
             return res
         except:
             return messages.GUESS_PARSING_ERROR
