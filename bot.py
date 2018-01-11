@@ -123,7 +123,7 @@ def check_solution2(puzzle_code, guess):
         return messages.INVALID_CODE
     else:
         answer = puzzles.ANSWERS[puzzle_code]
-        if (clean_guess(guess) == answer):
+        if (clean_guess(guess) != answer):
             return messages.WRONG_ANSWER
         else:
             return messages.CORRECT_ANSWER + puzzles.NUTRITION_FACTS[puzzle_code]
