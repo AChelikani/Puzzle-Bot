@@ -118,6 +118,16 @@ def puzzle_statuses(user):
         resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
     return resp
 
+def check_solution2(puzzle_code, guess):
+    if puzzle_code not in puzzles.ANSWERS:
+        return messages.INVALID_CODE
+    else:
+        answer = puzzles.ANSWERS[puzzle_code]
+        if (clean_guess(guess) == answer):
+            return messages.WRONG_ANSWER
+        else:
+            return messages.CORRECT_ANSWER + puzzles.NUTRITION_FACTS[puzzle_code]
+
 def check_solution(puzzle_code, guess, user):
     if puzzle_code not in puzzles.ANSWERS:
         return messages.INVALID_CODE
@@ -187,6 +197,17 @@ def submit_hint(puzzle_code, hint_request, user, response_channel):
     team_code_to_puzzles_solved[team_code][puzzle_code] = (puzzle_status, last_guess, time.time())
     send_message("`" + hint_code + "`\n For puzzle: `" + puzzle_name + "`.\n *Hint request was:* " + hint_request, hint_channel_id)
     return messages.HINT_REQUESTED
+
+def process_message2(message, user, channel):
+    if message == "help":
+        return messages.HELP_PREEVENT
+    else:
+        try:
+            puzzle_code, guess = message.split(" ", 1)
+            res = check_solution2(puzzle_code, guess)
+            return res
+        except:
+            return messages.GUESS_PARSING_ERROR
 
 def process_message(message, user, channel):
     if message == "help":
@@ -267,7 +288,7 @@ def process_event(rtm_event):
             resp = process_hint_response(DM_message)
             send_message_in_thread(resp, DM_channel, thread_ts)
         else:
-            resp = process_message(DM_message, DM_user, DM_channel)
+            resp = process_message2(DM_message, DM_user, DM_channel)
             send_message(resp, DM_channel)
 
 def send_message(message, channel):
