@@ -33,13 +33,16 @@ for group in groups["groups"]:
     if group["name"] == "stats":
         stats_channel_id = group["id"]
 
-preevent_channel_id = ""
+
+logs_channel_id = ""
 for group in groups["groups"]:
-    if group["name"] == "preevent":
-        preevent_channel_id = group["id"]
+    if group["name"] == "logs":
+        logs_channel_id = group["id"]
+
 
 assert(hint_channel_id != "")
 assert(stats_channel_id != "")
+assert(logs_channel_id != "")
 
 def team_info(user):
     if user not in user_to_team_code:
@@ -95,6 +98,7 @@ def update_score(user, puzzle_code):
 
 def clean_guess(guess):
     guess = guess.replace(" ", "")
+    guess = guess.replace("'", "")
     guess = guess.upper()
     return guess
 
@@ -120,7 +124,7 @@ def puzzle_statuses(user):
     puzzle_states = team_code_to_puzzles_solved[team_code]
     for puzzle_code in puzzle_states:
         puzzle_name = puzzles.PUZZLES[puzzle_code] + " (" + str(puzzle_code) + ")"
-        resp += "`" + puzzle_name + " "*(20 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
+        resp += "`" + puzzle_name + " "*(50 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
     return resp
 
 def check_solution2(puzzle_code, guess, user):
@@ -151,6 +155,8 @@ def check_solution(puzzle_code, guess, user):
             return messages.WAIT_TO_GUESS
         elif (clean_guess(guess) != answer):
             team_code_to_puzzles_solved[team_code][puzzle_code] = ("Not solved", guess_time, last_hint_time)
+            message = "`" + team_code_to_team_name[team_code] + "` on puzzle `" + puzzles.PUZZLES[puzzle_code] + "` guessed `" + guess + "`"
+            send_message(message, logs_channel_id)
             return messages.WRONG_ANSWER
         else:
             update_score(user, puzzle_code)
@@ -193,6 +199,7 @@ def submit_hint(puzzle_code, hint_request, user, response_channel):
     elif puzzle_code not in puzzles.PUZZLES:
         return messages.INVALID_CODE
     team_code = user_to_team_code[user]
+    team_name = team_code_to_team_name[team_code]
     puzzle_status, last_guess, last_hint_time = team_code_to_puzzles_solved[team_code][puzzle_code]
     if (puzzle_status == "Solved!"):
         return messages.PUZZLE_ALREADY_SOLVED
@@ -202,19 +209,37 @@ def submit_hint(puzzle_code, hint_request, user, response_channel):
     if (time.time() - last_hint_time < HINT_DElAY):
         return messages.WAIT_TO_HINT
     team_code_to_puzzles_solved[team_code][puzzle_code] = (puzzle_status, last_guess, time.time())
-    send_message("`" + hint_code + "`\n For puzzle: `" + puzzle_name + "`.\n *Hint request was:* " + hint_request, hint_channel_id)
+    send_message("`" + hint_code + "`\n By team: `" + team_name + "`\n For puzzle: `" + puzzle_name + "`.\n *Hint request was:* " + hint_request, hint_channel_id)
     return messages.HINT_REQUESTED
 
-def process_message2(message, user, channel):
+def process_message(message, user, channel):
     if message == "help":
         return messages.HELP_PREEVENT
     else:
         try:
             puzzle_code, guess = message.split(" ", 1)
-            res = check_solution2(puzzle_code, guess, user)
+            res = check_solution(puzzle_code, guess, user)
             return res
         except:
             return messages.GUESS_PARSING_ERROR
+
+def root_info(team_name):
+    for team_code in team_code_to_team_name:
+        if team_code_to_team_name[team_code] == team_name:
+            # Get team members
+            resp = "Team: `" + team_name + "`\n Members: "
+            for user in user_to_team_code:
+                if user_to_team_code[user] == team_code:
+                    resp += get_user_name(user) + " "
+            resp += "\n \n"
+
+            # Get solved puzzles
+            puzzle_states = team_code_to_puzzles_solved[team_code]
+            for puzzle_code in puzzle_states:
+                puzzle_name = puzzles.PUZZLES[puzzle_code] + " (" + str(puzzle_code) + ")"
+                resp += "`" + puzzle_name + " "*(50 - len(puzzle_name)) + puzzle_states[puzzle_code][0] + "`\n"
+            return resp
+    return messages.TEAM_DOES_NOT_EXIST
 
 def process_message(message, user, channel):
     if message == "help":
@@ -249,6 +274,13 @@ def process_message(message, user, channel):
         return puzzle_statuses(user)
     elif message == "team info":
         return team_info(user)
+    elif "root info" in message:
+        try:
+            _1, _2, teamname = message.split(" ", 2)
+            resp = root_info(teamname)
+            return resp
+        except:
+            return messages.ROOT_INFO_PARSING_ERROR
     elif "hint" in message:
         try:
             _1, puzzle_code, hint_prompt = message.split(" ", 2)
@@ -295,7 +327,7 @@ def process_event(rtm_event):
             resp = process_hint_response(DM_message)
             send_message_in_thread(resp, DM_channel, thread_ts)
         else:
-            resp = process_message2(DM_message, DM_user, DM_channel)
+            resp = process_message(DM_message, DM_user, DM_channel)
             send_message(resp, DM_channel)
 
 def send_message(message, channel):
@@ -310,7 +342,7 @@ def send_message_in_thread(message, channel, thread_ts):
 if __name__ == "__main__":
     READ_WEBSOCKET_DELAY = 1
     if sc.rtm_connect():
-        print "Puzzle Bot connected and running!"
+        print("Puzzle Bot connected and running!")
         while True:
             try:
                 process_event(sc.rtm_read())
